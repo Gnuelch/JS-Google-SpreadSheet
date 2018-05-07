@@ -24,7 +24,7 @@
  * console.log(sheet.get[1, 2]);
  * ```
  */
-class GSpreadSheet {
+export default class GSpreadSheet {
 
 	/**
 	 * Prefix for google spreadsheet documents. This is the url layout as of 07.05.2018
@@ -132,7 +132,7 @@ class GSpreadSheet {
 			});
 		}
 		// invoke callback
-		this.onLoad();
+		this.onLoad(this);
 	}
 
 	/**
@@ -189,4 +189,3 @@ class GSpreadSheet {
 		return tbl;
 	}
 }
-export default GSpreadSheet;
