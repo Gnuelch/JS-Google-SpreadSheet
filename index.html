@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Document</title>
+	<script src="code.js"></script>
+</head>
+<body>
+	<div id="output">
+	</div>
+	<script type="text/javascript">
+
+		var gsh = new GSpreadSheet("2PACX-1vSHxqWOh3tbxbnA-J6j7nuvVQ2bahoqdsuYe5jtYgmv_4Bs1z4BBC0LH2-ry2uX6XB5fPwYbekFKrnR", true);
+		gsh.onLoad = () => {
+			document.getElementById("output").appendChild(gsh.createTable("output"));
+		}
+	</script>
+</body>
+</html>
