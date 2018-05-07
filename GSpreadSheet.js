@@ -71,13 +71,21 @@ class GSpreadSheet {
 	get(column, row){return this.cols[column][row]; }
 
 	/**
+	 * Callback for when data finishes loading
+	 * @typedef {{(sheet:GSpreadSheet)=>void}} loadCallback
+	 */
+
+	/**
 	 * Creates a Sheet instance using the given spreadsheet id. Requires network connection!
 	 * @param {String} id The Google Spreadsheet ID String
 	 * @param {Boolean} hasHeader Wether the Spreadsheet has a header row
+	 * @param {loadCallback} onLoad Callback for when the data has been retrieved
+	 * 
 	 */
-	constructor(id, hasHeader = false) { 
+	constructor(id, hasHeader = false, onLoad = (sheet) => null) { 
 		this.id = id; 
 		this.hasHeader = hasHeader; 
+		this.onLoad = onLoad;
 		let request = new XMLHttpRequest();
 		request.open('GET', this.urlpre + this.id + this.urlpost, true);
 		// once the request is loaded, populate it's data and invoke callback
@@ -181,3 +189,4 @@ class GSpreadSheet {
 		return tbl;
 	}
 }
+export default GSpreadSheet;
