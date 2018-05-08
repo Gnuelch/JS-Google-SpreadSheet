@@ -11,19 +11,26 @@
    - `verylongtext`
  - Use the ID to create the Spreadsheet object
 ```js
-require GSpreadSheet from '/GSpreadSheet';
+import GSpreadSheet from '/GSpreadSheet';
 
-...
+// the boolean value indicates whether the sheet has a header row
 
-somefunction = new function(){
-	let sheetInstance = new GSpreadSheet('verylongtext', false, (sheet) => {
-		let some_col = sheet.cols['column name'];
-		let some_val = sheet.get('other column', 3);
-		let alternative = sheet.cols[1];
-		let some_row = sheet.rows[3];
-		if (sheet.hasHeader){
-			let headers = sheet.headers;
-		}
-	});
-}
+let sheetInstance = GSpreadSheet.fromExport('verylongtext', false, (sheet) => {
+	let some_col = sheet.cols['column name'];
+	let some_val = sheet.get('other column', 3);
+	let alternative = sheet.cols[1];
+	let some_row = sheet.rows[3];
+	if (sheet.hasHeader){
+		let headers = sheet.headers;
+	}
+});
+
+// Now Also with API 'support'!
+
+// as above, the boolean value determines whether the sheet (or range) has a header row
+
+let sheetInstance = GSpreadSheet.fromAPI('API_ID', 'Target_Sheet_Name', 'API_Key', false, 'A1:G23', (sheet) => {
+	// same as above
+});
+
 ```

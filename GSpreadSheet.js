@@ -2,39 +2,22 @@
  * Custom Google Spreadsheet class.
  * 
  * Usage:
- *  - [Create Google Spreadsheet.](https://docs.google.com/spreadsheets/u/0/)
- *  - Publish Spreadsheet into Web via 'file' -> 'publish in web...' -> 'link' -> 'publish' (specify sheet if you don't want all sheets to be published)
- *  - Use the ID of the URL as parameter for the constructor
- * 
- * It's the part between the '.../d/e/' and '/pubhtml'
- * 
- * so 
- * 
- * `https://docs.google.com/spreadsheets/d/e/2PACX-1vSHxqWOh3tbxbnA-J6j7nuvVQ2bahoqdsuYe5jtYgmv_4Bs1z4BBC0LH2-ry2uX6XB5fPwYbekFKrnR/pubhtml`
- * 
- * becomes
- * 
- * `2PACX-1vSHxqWOh3tbxbnA-J6j7nuvVQ2bahoqdsuYe5jtYgmv_4Bs1z4BBC0LH2-ry2uX6XB5fPwYbekFKrnR`
- * 
- * then you can create a Spreadsheet like:
- * ```js
- * let sheetID = "2PACX-1vSHxqWOh3tbxbnA-J6j7nuvVQ2bahoqdsuYe5jtYgmv_4Bs1z4BBC0LH2-ry2uX6XB5fPwYbekFKrnR";
- * let sheet = new GSpreadSheet(sheetID);
- * 
- * console.log(sheet.get[1, 2]);
- * ```
+ * 1.   - [Create Google Spreadsheet.](https://docs.google.com/spreadsheets/u/0/)
+ *    - Publish Spreadsheet into Web via 'file' -> 'publish in web...' -> 'link' -> 'publish' (specify sheet if you don't want all sheets to be published)
+ *    - Use the ID of the URL as to call `GSpreadSheet.fromExport(ID[,hasHeader:bool][,callback:function])`
+ * 2.   - [Create Google Spreadsheet.](https://docs.google.com/spreadsheets/u/0/)
+ *    - Publish with google developer console
+ *    - Get ID, Sheetname, key and optinally a specific value range (like 'A1:C3')
+ *    - use these values for `GSpreadSheet.fromAPI(ID,Sheet,Key[,hasHeader:bool][,range:string][,callback:function])`
  */
 export default class GSpreadSheet {
 
-	/**
-	 * Prefix for google spreadsheet documents. This is the url layout as of 07.05.2018
-	 */
-	get urlpre() { return "https://docs.google.com/spreadsheets/d/e/"; }
-	
-	/**
-	 * Suffix for google spreadsheet documents. This is the url layout as of 07.05.2018
-	 */
-	get urlpost() { return "/pub?output=csv" };
+	get exportUrl() { return "https://docs.google.com/spreadsheets/d/e/"+this.id+"/pub?output=csv"; }
+	get apiUrl() { 
+		return "https://sheets.googleapis.com/v4/spreadsheets/"+ this.id+
+				"/values/"+this.sheet + (this.range != null ? "!" + this.range : "") +
+				"?key=" + this.key;
+	}
 
 	/**
 	 * Get all rows
@@ -75,32 +58,77 @@ export default class GSpreadSheet {
 	 * @typedef {{(sheet:GSpreadSheet)=>void}} loadCallback
 	 */
 
+
 	/**
-	 * Creates a Sheet instance using the given spreadsheet id. Requires network connection!
+	 * Creates a Sheet instance using the given web-export spreadsheet id.
 	 * @param {String} id The Google Spreadsheet ID String
 	 * @param {Boolean} hasHeader Wether the Spreadsheet has a header row
 	 * @param {loadCallback} onLoad Callback for when the data has been retrieved
-	 * 
+	 * @returns {GSpreadSheet} An instance of GSpreadSheet
 	 */
-	constructor(id, hasHeader = false, onLoad = (sheet) => null) { 
-		this.id = id; 
-		this.hasHeader = hasHeader; 
-		this.onLoad = onLoad;
+	static fromExport(id, hasHeader = false, onLoad = (sheet) => null){
+		let newSheet = new GSpreadSheet();
+		newSheet.id = id; 
+		newSheet.hasHeader = hasHeader; 
+		newSheet.onLoad = onLoad;
 		let request = new XMLHttpRequest();
-		request.open('GET', this.urlpre + this.id + this.urlpost, true);
+		request.open('GET', newSheet.exportUrl, true);
 		// once the request is loaded, populate it's data and invoke callback
-		request.onload = () => this.valueAssignment.bind(this)(request);
+		request.onload = () => newSheet.CSVValueAssignment.bind(newSheet)(request);
 		request.send();
+		return newSheet;
+	}
+
+	static fromAPI(id, sheet, key, hasHeader = false, range = null, onLoad = (sheet) => null){
+		let newSheet = new GSpreadSheet();
+		newSheet.id = id;
+		newSheet.sheet = sheet;
+		newSheet.key = key;
+		newSheet.hasHeader = hasHeader;
+		newSheet.range = range;
+		newSheet.onLoad = onLoad;
+		let request = new XMLHttpRequest();
+		request.open('GET', newSheet.apiUrl, true);
+		request.onload = () => newSheet.JSONValueAssignment.bind(newSheet)(request);
+		request.send();
+		return newSheet;
+	}
+
+
+	JSONValueAssignment(request){
+		let rawData = JSON.parse(request.responseText).values;
+		this._rows = Array(rawData.length - (this.hasHeader ? 1 : 0));
+		rawData.forEach((rowVal,rowIndex) => {
+			if (this.hasHeader){
+				if (rowIndex == 0)
+					this.headers = rowVal;
+				else{
+					this._rows[rowIndex - 1] = rowVal;
+					this.headers.forEach((hval, hindex) => this._rows[rowIndex-1][hval] = this._rows[rowIndex-1][hindex] );
+				}
+			} else this._rows[rowIndex] = rowVal;
+		});
+		this._cols = Array(this._rows[0].length);
+
+		for(let colIndex = 0; colIndex < this._rows[0].length; colIndex++){
+			this._cols[colIndex] = Array(this._rows.length);
+			this._rows.forEach((rowval, rowIndex) => {
+				this._cols[colIndex, rowIndex] = this._rows[rowIndex][colIndex];
+				if (this.hasHeader)
+				this._cols[this.headers[colIndex]] = this._cols[colIndex];
+			})
+		}
+		this.onLoad(this);
 	}
 
 	/**
 	 * internally used from the constructor
 	 */
-	valueAssignment(request){
+	CSVValueAssignment(request){
 		// split the response (it's a csv) into rows
 		let responseRows = request.responseText.split('\n');
 		// define the rows property as array (header row is placed in the headers property if available)
-		this._rows = Array(responseRows.length - (this.hasHeader ? 2 : 1));
+		this._rows = Array(responseRows.length - (this.hasHeader ? 1 : 0));
 		// iterate through the rows to assign the values
 		responseRows.forEach((val, index) => {
 			// if a header row is defined, we can use the headers as index for the columns, as well as the cells when navigating rows.
@@ -126,9 +154,8 @@ export default class GSpreadSheet {
 				// map each col/row to row/col
 				this._cols[colIndex][rowIndex] = this._rows[rowIndex][colIndex];
 				// if headers are available, map these to their respective non-header equivalent
-				if (this.hasHeader){
+				if (this.hasHeader)
 					this._cols[this.headers[colIndex]] = this._cols[colIndex];
-				}
 			});
 		}
 		// invoke callback
